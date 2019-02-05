@@ -4,14 +4,10 @@ import os
 import inspect
 HERE_PATH = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
-
 import numpy as np
 
-
-from learners.discrete_known_feedback import DiscreteKnownFeedbackLearner
-
-from players.discrete_known_feedback import DiscreteKnownFeedbackPlayer
-
+from discrete_known import DiscreteKnownFeedbackLearner
+from discrete_known import DiscreteKnownFeedbackPlayer
 
 if __name__ == '__main__':
 

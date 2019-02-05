@@ -51,7 +51,7 @@ class DiscreteKnownFeedbackLearner(object):
 
             labels = equal_flash_pattern[index_to_differentiate]
 
-            value, counts = np.unique(labels, return_counts=True)
+            values, counts = np.unique(labels, return_counts=True)
             entropy = scipy.stats.entropy(counts, base=2)
 
             entropy_values.append(entropy)
@@ -72,3 +72,18 @@ class DiscreteKnownFeedbackLearner(object):
 
     def is_inconsistent(self):
         return np.sum(self.hypothesis_scores) == 0
+
+
+class DiscreteKnownFeedbackPlayer(object):
+
+    def __init__(self, n_hypothesis, target_index=None):
+        self.n_hypothesis = n_hypothesis
+
+        if target_index is not None:
+            self.target_index = target_index
+        else:
+            self.target_index = np.random.randint(self.n_hypothesis)
+
+
+    def get_feedback(self, flash_pattern):
+        return flash_pattern[self.target_index]
