@@ -1,3 +1,10 @@
+import os
+
+# this get our current location in the file system
+import inspect
+HERE_PATH = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+
+
 from pprint import pprint
 import numpy as np
 import random
@@ -58,7 +65,8 @@ if __name__ == '__main__':
     import itertools
     from tinydb import TinyDB, Query
 
-    db = TinyDB('results.json')
+    DB_FILENAME = os.path.join(HERE_PATH, 'results.json')
+    db = TinyDB(DB_FILENAME)
     user = Query()
 
     N_EXPERIMENTS = 100
