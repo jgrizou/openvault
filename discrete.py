@@ -1,3 +1,4 @@
+import time
 import random
 import itertools
 
@@ -8,22 +9,92 @@ import tools
 RESERVED_UNKNOWN_SYMBOL = 'UNKNOWN'
 INCONSISTENT_SYMBOL = 'INCONSISTENT'
 
+
+class DiscreteRunner(object):
+
+    def __init__(self, n_hypothesis, player_symbols, known_symbols={}, target_index=None):
+
+        self.n_hypothesis = n_hypothesis
+        self.learner = DiscreteLearner(n_hypothesis, known_symbols)
+        self.player = DiscretePlayer(n_hypothesis, player_symbols, target_index)
+
+    def reset_learner(self, updated_known_symbols):
+        self.learner = DiscreteLearner(self.n_hypothesis, updated_known_symbols)
+
+    def update_target_index(self, new_target_index):
+        self.player.update_target_index(new_target_index)
+
+    def step(self, planning_method):
+        flash_pattern = self.learner.get_next_flash_pattern(planning_method)
+        feedback_symbol = self.player.get_feedback_symbol(flash_pattern)
+        self.learner.update(flash_pattern, feedback_symbol)
+
+    def run_until_solved(self, planning_method, n_abort_steps=np.inf):
+
+        aborted = False
+        inconsistent = False
+
+        n_steps = 0
+        step_durations = []
+        while not self.learner.is_solved():
+            start_time = time.time()
+            n_steps+=1
+
+            self.step(planning_method)
+
+            if self.learner.is_inconsistent():
+                aborted = True
+                inconsistent = True
+                break
+
+            if n_steps == n_abort_steps:
+                aborted = True
+                break
+
+            step_durations.append(time.time() - start_time)
+
+        # logging
+        run_info = {}
+        # log basic data
+        run_info['aborted'] = aborted
+        run_info['inconsistent'] = inconsistent
+        run_info['n_steps'] = n_steps
+        run_info['avg_steps_duration'] = np.mean(step_durations)
+        run_info['player_target_index'] = self.player.target_index
+        # log history
+        run_info['learner_known_symbols'] = self.learner.known_symbols.copy(),
+        run_info['hypothesis_validity_history'] = self.learner.hypothesis_validity_history.copy(),
+        run_info['flash_history'] = self.learner.flash_history.copy(),
+        run_info['symbol_history'] = self.learner.symbol_history.copy(),
+        run_info['hypothesis_labels'] = self.learner.hypothesis_labels.copy()
+        # if solved log what was understood
+        if not aborted:
+            learner_solution_index = self.learner.get_solution_index()
+            learner_interpretation = self.learner.compute_symbols_belief_for_hypothesis(learner_solution_index)
+
+            run_info['learner_solution_index'] = learner_solution_index
+            run_info['learner_interpretation'] = learner_interpretation
+
+        return run_info
+
+
 class DiscretePlayer(object):
 
     def __init__(self, n_hypothesis, player_symbols, target_index=None):
         self.n_hypothesis = n_hypothesis
-
         self.player_symbols = player_symbols
-
-        if target_index is None:  # set it randomly
-            self.target_index = np.random.randint(self.n_hypothesis)
-        else:
-            self.target_index = target_index
+        self.update_target_index(target_index)
 
     def get_feedback_symbol(self, flash_pattern):
         is_target_flashed = flash_pattern[self.target_index]
         associated_symbols = self.player_symbols[is_target_flashed]
         return random.choice(associated_symbols)
+
+    def update_target_index(self, new_target_index):
+        if new_target_index is None:  # set it randomly
+            self.target_index = np.random.randint(self.n_hypothesis)
+        else:
+            self.target_index = new_target_index
 
 
 class DiscreteLearner(object):
@@ -33,6 +104,9 @@ class DiscreteLearner(object):
         self.known_symbols = known_symbols
 
         self.hypothesis_validity = [True for _ in range(n_hypothesis)]
+
+        self.hypothesis_validity_history = []
+        self.hypothesis_validity_history.append(self.hypothesis_validity.copy())
 
         self.flash_history = []
         self.symbol_history = []
@@ -130,13 +204,16 @@ class DiscreteLearner(object):
             # assign value
             self.hypothesis_validity[i_hyp] = consistent
 
+        # logging the updated hypothesis_validity
+        self.hypothesis_validity_history.append(self.hypothesis_validity.copy())
 
-    def get_next_flash_pattern(self, method='even_uncertainty'):
-        if method == 'random':
+
+    def get_next_flash_pattern(self, planning_method='even_uncertainty'):
+        if planning_method == 'random':
             return [random.choice([True, False]) for _ in range(self.n_hypothesis)]
-        elif method == 'even_random':
+        elif planning_method == 'even_random':
             return random.choice(self.even_flash_patterns)
-        elif method == 'even_uncertainty':
+        elif planning_method == 'even_uncertainty':
             return random.choice(self.compute_uncertain_patterns())
         else:
             raise Exception('Planning method "{}" not defined'.format(method))

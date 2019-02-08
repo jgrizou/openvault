@@ -15,7 +15,7 @@ def compute_even_flash_patterns(n_hypothesis):
     for combination in itertools.combinations(range(n_hypothesis), n_hypothesis//2):
         flash_pattern = np.full(n_hypothesis, False)
         flash_pattern[np.array(combination)] = True
-        even_flash_patterns.append(flash_pattern)
+        even_flash_patterns.append(flash_pattern.tolist())
     return even_flash_patterns
 
 def get_values_at_indexes(a_list, indexes):

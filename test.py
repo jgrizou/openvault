@@ -1,138 +1,95 @@
-
-
 from pprint import pprint
 import numpy as np
+import random
 
 import tools
 
 
-
 from discrete import DiscreteLearner
 from discrete import DiscretePlayer
+from discrete import DiscreteRunner
 
 
+N_ABORT_STEPS = np.inf
+TARGET_INDEX = None
+PLANNING_METHOD = 'even_uncertainty'
+
+
+def run(seed, code_length, n_hypothesis, n_button_per_label, are_labels_known):
+
+    tools.set_seed(seed, verbose=False)
+
+    player_symbols = {
+        True: [str(i) for i in range(n_button_per_label)],
+        False: [str(i) for i in range(n_button_per_label, 2*n_button_per_label)]
+    }
+
+    known_symbols = {}
+    if are_labels_known:
+        for label in [True, False]:
+            for symbol in player_symbols[label]:
+                known_symbols[symbol] = label
+
+    runner = DiscreteRunner(n_hypothesis, player_symbols, known_symbols, TARGET_INDEX)
+
+    result = {
+        'steps_per_solution' : [],
+        'avg_steps_duration_per_solution': []
+    }
+    for _ in range(code_length):
+        run_info = runner.run_until_solved(PLANNING_METHOD, N_ABORT_STEPS)
+        runner.reset_learner(run_info['learner_interpretation'])
+        runner.update_target_index(TARGET_INDEX)
+
+        # print('Identified {} from {} in {} steps.'.format(run_info['learner_solution_index'], run_info['player_target_index'], run_info['n_steps']))
+
+        result['steps_per_solution'].append(run_info['n_steps'])
+        result['avg_steps_duration_per_solution'].append(run_info['avg_steps_duration'])
+
+    return result
 
 if __name__ == '__main__':
 
-    SEED = np.random.randint(0, 1000)
-    N_ABORT_STEPS = 20
+    # SEED = np.random.randint(0, 10000)
+    # if SEED is not None:
+    #     tools.set_seed(SEED, verbose=False)
 
-    if SEED is not None:
-        tools.set_seed(SEED)
+    import math
+    import itertools
+    from tinydb import TinyDB, Query
 
-    N_HYPOTHESIS = 10
+    db = TinyDB('results.json')
+    user = Query()
 
-    KNOWN_SYMBOLS = {
-        'ouioui': True,
-        'nonnon': False
+    N_EXPERIMENTS = 100
+    XP_PARAMS = {
+        'seed': range(N_EXPERIMENTS),
+        'code_length': [1, 2, 3, 4, 5],
+        'n_hypothesis': [4, 6, 8, 10, 12],
+        'n_button_per_label': [1, 2, 3, 4, 5],
+        'are_labels_known': [True, False]
     }
-    KNOWN_SYMBOLS = {}
 
-    learner = DiscreteLearner(N_HYPOTHESIS, KNOWN_SYMBOLS)
+    param_keys, param_values = zip(*XP_PARAMS.items())
 
+    n_experiments = sum(1 for _ in itertools.product(*param_values))
+    digits = int(math.log10(n_experiments))+1
 
-    PLAYER_SYMBOLS = {
-        True: ['yes', 'y', 'oui', 'e'],
-        False: ['no', 'n', 'non']
-    }
-    # PLAYER_SYMBOLS = {
-    #     True: ['yes'],
-    #     False: ['no']
-    # }
-    TARGET_INDEX = None
+    for i_exp, param_combination in enumerate(itertools.product(*param_values)):
 
-    player = DiscretePlayer(N_HYPOTHESIS, PLAYER_SYMBOLS, TARGET_INDEX)
+        i_exp_corrected = i_exp + 1
+        i_str = f"{i_exp_corrected:{digits}}"
+        n_exp_str = f"{n_experiments:{digits}}"
 
-    print('Target is {}'.format(player.target_index))
+        print('{}:{} '.format(i_str , n_exp_str), end='\b')
 
-    cnt = 0
-    while not learner.is_solved():
-        cnt+=1
+        xp = {}
+        xp['params'] = dict(zip(param_keys, param_combination))
 
-        previous_scores = learner.hypothesis_validity.copy()
-
-        # print('###')
-
-        flash_pattern = learner.get_next_flash_pattern()
-        # feedback_label = np.array(int(input('Enter Feedback: ')))
-        feedback_symbol = player.get_feedback_symbol(flash_pattern)
-        learner.update(flash_pattern, feedback_symbol)
-
-        # print('###')
-        # print('Previous Valid:  {}'.format(previous_scores))
-        # print('Pattern: {}'.format(flash_pattern))
-        # print('Feedback: {}'.format(feedback_symbol))
-        # print('Validity:  {}'.format(learner.hypothesis_validity))
-
-        if learner.is_inconsistent():
-            raise Exception('Learner Inconsistent!')
-
-        if cnt == N_ABORT_STEPS:
-            break
-
-    if learner.is_solved():
-        print('Found solution in {} steps'.format(cnt))
-
-        solution_index = learner.get_solution_index()
-        print('Estimated Target is {}'.format(solution_index))
-
-        solution_interpretation = learner.compute_symbols_belief_for_hypothesis(solution_index)
-        pprint(solution_interpretation)
-
-    else:
-        print('Aborted after {} iterations'.format(cnt))
-
-
-
-    print('#################################')
-
-    KNOWN_SYMBOLS = solution_interpretation
-
-    learner = DiscreteLearner(N_HYPOTHESIS, KNOWN_SYMBOLS)
-
-    PLAYER_SYMBOLS = {
-        True: ['yes', 'y', 'oui', 'e'],
-        False: ['no', 'n', 'non', 'ewf']
-    }
-    TARGET_INDEX = None
-
-    player = DiscretePlayer(N_HYPOTHESIS, PLAYER_SYMBOLS, TARGET_INDEX)
-
-    print('Target is {}'.format(player.target_index))
-
-    cnt = 0
-    while not learner.is_solved():
-        cnt+=1
-
-        previous_scores = learner.hypothesis_validity.copy()
-
-        # print('###')
-
-        flash_pattern = learner.get_next_flash_pattern()
-        # feedback_label = np.array(int(input('Enter Feedback: ')))
-        feedback_symbol = player.get_feedback_symbol(flash_pattern)
-        learner.update(flash_pattern, feedback_symbol)
-
-        # print('###')
-        # print('Previous Valid:  {}'.format(previous_scores))
-        # print('Pattern: {}'.format(flash_pattern))
-        # print('Feedback: {}'.format(feedback_symbol))
-        # print('Validity:  {}'.format(learner.hypothesis_validity))
-
-        if learner.is_inconsistent():
-            raise Exception('Learner Inconsistent!')
-
-        if cnt == N_ABORT_STEPS:
-            break
-
-    if learner.is_solved():
-        print('Found solution in {} steps'.format(cnt))
-
-        solution_index = learner.get_solution_index()
-        print('Estimated Target is {}'.format(solution_index))
-
-        solution_interpretation = learner.compute_symbols_belief_for_hypothesis(solution_index)
-        pprint(solution_interpretation)
-
-    else:
-        print('Aborted after {} iterations'.format(cnt))
+        if db.search(user.params == xp['params']):
+            print(' - Skipping')
+            continue
+        else:
+            print(' - Running')
+            xp['results'] = run(**xp['params'])
+            db.insert(xp)
