@@ -4,7 +4,7 @@ import itertools
 
 import numpy as np
 
-import tools
+from . import tools
 
 RESERVED_UNKNOWN_SYMBOL = 'UNKNOWN'
 INCONSISTENT_SYMBOL = 'INCONSISTENT'
