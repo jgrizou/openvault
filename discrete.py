@@ -10,74 +10,6 @@ RESERVED_UNKNOWN_SYMBOL = 'UNKNOWN'
 INCONSISTENT_SYMBOL = 'INCONSISTENT'
 
 
-class DiscreteRunner(object):
-
-    def __init__(self, n_hypothesis, player_symbols, known_symbols={}, target_index=None):
-
-        self.n_hypothesis = n_hypothesis
-        self.learner = DiscreteLearner(n_hypothesis, known_symbols)
-        self.player = DiscretePlayer(n_hypothesis, player_symbols, target_index)
-
-    def reset_learner(self, updated_known_symbols):
-        self.learner = DiscreteLearner(self.n_hypothesis, updated_known_symbols)
-
-    def update_target_index(self, new_target_index):
-        self.player.update_target_index(new_target_index)
-
-    def step(self, planning_method):
-        flash_pattern = self.learner.get_next_flash_pattern(planning_method)
-        feedback_symbol = self.player.get_feedback_symbol(flash_pattern)
-        self.learner.update(flash_pattern, feedback_symbol)
-
-    def run_until_solved(self, planning_method, n_abort_steps=np.inf):
-
-        aborted = False
-        inconsistent = False
-
-        n_steps = 0
-        step_durations = []
-        while not self.learner.is_solved():
-            start_time = time.time()
-            n_steps+=1
-
-            self.step(planning_method)
-
-            if self.learner.is_inconsistent():
-                aborted = True
-                inconsistent = True
-                break
-
-            if n_steps == n_abort_steps:
-                aborted = True
-                break
-
-            step_durations.append(time.time() - start_time)
-
-        # logging
-        run_info = {}
-        # log basic data
-        run_info['aborted'] = aborted
-        run_info['inconsistent'] = inconsistent
-        run_info['n_steps'] = n_steps
-        run_info['avg_steps_duration'] = np.mean(step_durations)
-        run_info['player_target_index'] = self.player.target_index
-        # log history
-        run_info['learner_known_symbols'] = self.learner.known_symbols.copy(),
-        run_info['hypothesis_validity_history'] = self.learner.hypothesis_validity_history.copy(),
-        run_info['flash_history'] = self.learner.flash_history.copy(),
-        run_info['symbol_history'] = self.learner.symbol_history.copy(),
-        run_info['hypothesis_labels'] = self.learner.hypothesis_labels.copy()
-        # if solved log what was understood
-        if not aborted:
-            learner_solution_index = self.learner.get_solution_index()
-            learner_interpretation = self.learner.compute_symbols_belief_for_hypothesis(learner_solution_index)
-
-            run_info['learner_solution_index'] = learner_solution_index
-            run_info['learner_interpretation'] = learner_interpretation
-
-        return run_info
-
-
 class DiscretePlayer(object):
 
     def __init__(self, n_hypothesis, player_symbols, target_index=None):
@@ -259,8 +191,8 @@ class DiscreteLearner(object):
                 expected_symbol_distributions.append(symbols_distribution)
 
             # we now have a full distribution of expected symbols
-            # we compute a score an uncertainty score by measruing the pairwise probability that two hypothesis will trigger different feedback symbol from the user
-            # in other we measure how uncertain we are of the outcome of the tested flashing pattern
+            # we compute an uncertainty score by measruing the pairwise probability that two hypothesis will trigger different feedback symbol from the user
+            # in other words we measure how uncertain we are of the outcome of the tested flashing pattern
             uncertainty_score = 0
             pairwise_combination_indexes = itertools.combinations(range(len(expected_symbol_distributions)), 2)
             for i, j in pairwise_combination_indexes:
@@ -275,7 +207,7 @@ class DiscreteLearner(object):
             pattern_scores .append(uncertainty_score)
 
         # we have a score for every patterns now
-        # we plan to return an array of the most uncertain one
+        # we return an array of the most uncertain one
         max_scores = np.max(pattern_scores)
         max_scores_indexes = tools.get_indexes_for_value(pattern_scores, max_scores)
         best_flash_patterns = tools.get_values_at_indexes(self.even_flash_patterns, max_scores_indexes)
