@@ -2,8 +2,8 @@ import random
 
 import numpy as np
 
-import tools
-import classifier_tools
+from . import tools
+from . import classifier_tools
 
 N_CLASS_REQUIREMENT = 2  # Feedback mode -> True or False
 MIN_SAMPLE_PER_CLASS_REQUIREMENT = 2 #  This really depends on the dimensionality of the data, make this a variable in the code if required
@@ -49,7 +49,8 @@ class ContinuousLearner(object):
         self.even_flash_patterns = tools.compute_even_flash_patterns(self.n_hypothesis)
 
     def is_inconsistent(self):
-        return np.sum(self.hypothesis_validity) == 0
+        # this concept deos not realy exist / is impossible to quantify, on continuous cases
+        return False
 
     def is_solved(self):
         return np.max(self.hypothesis_probability) > PROBA_DECISION_THRESHOLD
@@ -163,7 +164,6 @@ class ContinuousLearner(object):
         for even_flash_pattern in self.even_flash_patterns:
 
             score = 0
-
             for i_hyp in range(self.n_hypothesis):
                 labels = self.hypothesis_labels[i_hyp]
                 if not classifier_tools.is_y_valid(labels, N_CLASS_REQUIREMENT, MIN_SAMPLE_PER_CLASS_REQUIREMENT):
@@ -257,14 +257,14 @@ if __name__ == '__main__':
     TARGET = None
 
     def signal_generator_2D(is_target_flashed):
-        cov = [[0.1, 0], [0, 0.1]]
+        cov = [[0.01, 0], [0, 0.01]]
         if is_target_flashed:
             mean = [0, 0]
         else:
             mean = [1, 1]
         return np.random.multivariate_normal(mean, cov, 1)[0].tolist()
 
-    for i in range(1):
+    for i in range(10, 11):
 
         seed = i
         tools.set_seed(seed)
@@ -288,19 +288,19 @@ if __name__ == '__main__':
             if learner.is_solved():
                 true_i_target = player.target_index
                 found_i_target = learner.get_solution_index()
+                print('{} - {} in {} steps'.format(true_i_target, found_i_target, j+1))
+                valid = true_i_target == found_i_target
+                run_info['valid'].append(valid)
 
+                run_info['steps_to_solved'].append(j+1)
+                if len(run_info['steps_to_solved']) >= N_FOUND:
+                    break
+
+                # change target and propagate label for next target
                 player = ContinuousPlayer(N_HYPOTHESIS, signal_generator_2D, TARGET)
                 learner.propagate_labels_from_hypothesis(found_i_target)
 
-                print('{} - {} in {} steps'.format(true_i_target, found_i_target, j+1))
 
-                valid = true_i_target == found_i_target
-
-                run_info['steps_to_solved'].append(j+1)
-                run_info['valid'].append(valid)
-
-            if len(run_info['steps_to_solved']) >= N_FOUND:
-                break
 
     # print('mean {}({}), min {}, max {}'.format(np.mean(enough_step), np.std(enough_step), np.min(enough_step), np.max(enough_step)))
 
