@@ -1,17 +1,35 @@
 import numpy as np
 from sklearn.svm import SVC
+from sklearn.model_selection import LeaveOneOut
 
 
-def compute_loglikelihood(X, y, kernel='rbf', proba_label_valid=0.99):
+def compute_loglikelihood(X, y, kernel='rbf', proba_label_valid=0.99, use_leave_one_out=True):
 
     X = np.atleast_2d(X)
     y = np.array(y)
 
+    # fit a classifier on the full data anyway as we need one for planning (etc) that this function will return
     clf = SVC(gamma='scale', kernel=kernel, probability=True)
     clf.fit(X, y)
 
+    # get true log matrice
     log_y_true = label_log_proba(y, clf.classes_, proba_label_valid)
-    log_y_pred = clf.predict_log_proba(X)
+
+    # compute predicted log matrice
+    if use_leave_one_out:
+        log_y_pred = np.zeros(log_y_true.shape)
+
+        loo = LeaveOneOut()
+        for train_index, test_index in loo.split(X):
+            loo_clf = SVC(gamma='scale', kernel=kernel, probability=True)
+            loo_clf.fit(X[train_index], y[train_index])
+            log_y_test_pred = loo_clf.predict_log_proba(X[test_index])
+
+            log_y_pred[test_index, :] = log_y_test_pred
+
+    else:
+        log_y_pred = clf.predict_log_proba(X)
+
 
     # likelihood that the classifier output matches with the labels:
     # prod_i sum_y P(y_true_{i}=y)P(y_pred_{i}=y)

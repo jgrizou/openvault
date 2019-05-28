@@ -6,10 +6,10 @@ from . import tools
 from . import classifier_tools
 
 N_CLASS_REQUIREMENT = 2  # Feedback mode -> True or False
-MIN_SAMPLE_PER_CLASS_REQUIREMENT = 2 #  This really depends on the dimensionality of the data, make this a variable in the code if required
-PROBA_ASSIGNED_LABEL_VALID = 0.99  # 1-P(user is making a mistake), need to be high but never reach 1 for computational stability
-PROBA_DECISION_THRESHOLD = 0.95  # once on hypothesis has proba above 0.9 (meaning the sum of all other is 0.1), we consider the problem solved
-MAX_N_SAMPLES_TO_COMPUTE_UNCERTAINTY = 10  # we use the second method to compute uncertainty by sampling previous signals. We limit the number of signals to cap the computational cost.
+MIN_SAMPLE_PER_CLASS_REQUIREMENT = 3 # Only compute classifiers when there is enough data for it to be meaningfull. This really depends on the dimensionality of the data, make this a variable in the code if required
+PROBA_ASSIGNED_LABEL_VALID = 0.95  # 1-P(user is making a mistake), need to be high but never reach 1 for computational stability
+PROBA_DECISION_THRESHOLD = 0.99  # once on hypothesis has proba above this, we consider the problem solved
+MAX_N_SAMPLES_TO_COMPUTE_UNCERTAINTY = 10  # we use the second method (see thesis) to compute uncertainty by sampling previous signals. We limit the number of signals to cap the computational cost.
 
 
 class ContinuousPlayer(object):
@@ -41,6 +41,8 @@ class ContinuousLearner(object):
         self.hypothesis_probability_history = []
         self.hypothesis_probability_history.append(self.hypothesis_probability.copy())
 
+        self.use_leave_one_out = True
+
         self.flash_history = []
         self.signal_history = []
 
@@ -61,6 +63,12 @@ class ContinuousLearner(object):
         else:
             raise Exception('Not Solved yet')
 
+    def enough_labels_per_hypothesis(self):
+        for hyp_label in self.hypothesis_labels:
+            if not classifier_tools.is_y_valid(hyp_label, N_CLASS_REQUIREMENT, MIN_SAMPLE_PER_CLASS_REQUIREMENT):
+                return False
+        return True
+
     def propagate_labels_from_hypothesis(self, hypothesis_index):
         # propagate labels first
         labels_to_propagate = self.hypothesis_labels[hypothesis_index].copy()
@@ -74,9 +82,12 @@ class ContinuousLearner(object):
         # we recompute the classifiers, for the uncertainty planning
         hypothesis_classifier_infos = []
         for hyp_label in self.hypothesis_labels:
-            _, hyp_classifier_info = classifier_tools.compute_loglikelihood(self.signal_history, hyp_label, proba_label_valid=PROBA_ASSIGNED_LABEL_VALID)
+            _, hyp_classifier_info = classifier_tools.compute_loglikelihood(self.signal_history, hyp_label, proba_label_valid=PROBA_ASSIGNED_LABEL_VALID, use_leave_one_out=False)
             hypothesis_classifier_infos.append(hyp_classifier_info)
         self.hypothesis_classifier_infos = hypothesis_classifier_infos
+
+        # we decide that once the first target has been found and we propagate labels, we will stop using leave one out method for computing loglikelihood as all models are now very similar and it would take more and more computational ressource to keep using a leave one out past that point.
+        self.use_leave_one_out = False
 
 
     def update(self, flash_pattern, feedback_signal):
@@ -94,7 +105,7 @@ class ContinuousLearner(object):
             hypothesis_loglikelihoods = []
             hypothesis_classifier_infos = []
             for hyp_label in self.hypothesis_labels:
-                hyp_loglikelihood, hyp_classifier_info = classifier_tools.compute_loglikelihood(self.signal_history, hyp_label, proba_label_valid=PROBA_ASSIGNED_LABEL_VALID)
+                hyp_loglikelihood, hyp_classifier_info = classifier_tools.compute_loglikelihood(self.signal_history, hyp_label, proba_label_valid=PROBA_ASSIGNED_LABEL_VALID, use_leave_one_out=self.use_leave_one_out)
 
                 hypothesis_loglikelihoods.append(hyp_loglikelihood)
                 hypothesis_classifier_infos.append(hyp_classifier_info)
@@ -122,13 +133,6 @@ class ContinuousLearner(object):
 
         # logging the updated hypothesis_validity
         self.hypothesis_probability_history.append(self.hypothesis_probability.copy())
-
-
-    def enough_labels_per_hypothesis(self):
-        for hyp_label in self.hypothesis_labels:
-            if not classifier_tools.is_y_valid(hyp_label, N_CLASS_REQUIREMENT, MIN_SAMPLE_PER_CLASS_REQUIREMENT):
-                return False
-        return True
 
 
     def get_next_flash_pattern(self, planning_method='even_uncertainty'):
