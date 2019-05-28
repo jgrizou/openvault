@@ -2,11 +2,8 @@ import random
 
 import numpy as np
 
-# from . import tools
-# from . import classifier_tools
-
-import tools
-import classifier_tools
+from . import tools
+from . import classifier_tools
 
 N_CLASS_REQUIREMENT = 2  # Feedback mode -> True or False
 MIN_SAMPLE_PER_CLASS_REQUIREMENT = 3 # Only compute classifiers when there is enough data for it to be meaningfull. This really depends on the dimensionality of the data, make this a variable in the code if required
