@@ -2,8 +2,11 @@ import random
 
 import numpy as np
 
-from . import tools
-from . import classifier_tools
+# from . import tools
+# from . import classifier_tools
+
+import tools
+import classifier_tools
 
 N_CLASS_REQUIREMENT = 2  # Feedback mode -> True or False
 MIN_SAMPLE_PER_CLASS_REQUIREMENT = 3 # Only compute classifiers when there is enough data for it to be meaningfull. This really depends on the dimensionality of the data, make this a variable in the code if required
@@ -23,7 +26,7 @@ class ContinuousPlayer(object):
         is_target_flashed = flash_pattern[self.target_index]
         return self.signal_generator(is_target_flashed)
 
-    def update_target_index(self, new_target_index):
+    def update_target_index(self, new_target_index=None):
         if new_target_index is None:  # set it randomly
             self.target_index = np.random.randint(self.n_hypothesis)
         else:
@@ -301,7 +304,7 @@ if __name__ == '__main__':
                     break
 
                 # change target and propagate label for next target
-                player = ContinuousPlayer(N_HYPOTHESIS, signal_generator_2D, TARGET)
+                player.update_target_index()
                 learner.propagate_labels_from_hypothesis(found_i_target)
 
 
