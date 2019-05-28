@@ -10,8 +10,6 @@ import classifier_tools
 
 N_CLASS_REQUIREMENT = 2  # Feedback mode -> True or False
 MIN_SAMPLE_PER_CLASS_REQUIREMENT = 3 # Only compute classifiers when there is enough data for it to be meaningfull. This really depends on the dimensionality of the data, make this a variable in the code if required
-PROBA_ASSIGNED_LABEL_VALID = 0.95  # 1-P(user is making a mistake), need to be high but never reach 1 for computational stability
-PROBA_DECISION_THRESHOLD = 0.99  # once on hypothesis has proba above this, we consider the problem solved
 MAX_N_SAMPLES_TO_COMPUTE_UNCERTAINTY = 10  # we use the second method (see thesis) to compute uncertainty by sampling previous signals. We limit the number of signals to cap the computational cost.
 
 
@@ -35,16 +33,20 @@ class ContinuousPlayer(object):
 
 class ContinuousLearner(object):
 
-    def __init__(self, n_hypothesis):
+    def __init__(self, n_hypothesis, proba_decision_threshold=0.95,
+        proba_assigned_to_label_valid=0.99, use_leave_one_out_at_start=True):
+
         self.n_hypothesis = n_hypothesis
+
+        self.use_leave_one_out = use_leave_one_out_at_start
+        self.proba_decision_threshold = proba_decision_threshold # once on hypothesis has proba above this, we consider the problem solved
+        self.proba_assigned_to_label_valid = proba_assigned_to_label_valid # 1-P(user is making a mistake), need to be high but never reach 1 for computational stability
 
         self.hypothesis_probability = [0.5 for _ in range(self.n_hypothesis)]  # this is not really a probability distribution, see thesis eq 4.10
         self.hypothesis_classifier_infos = [{} for _ in range(self.n_hypothesis)]
 
         self.hypothesis_probability_history = []
         self.hypothesis_probability_history.append(self.hypothesis_probability.copy())
-
-        self.use_leave_one_out = True
 
         self.flash_history = []
         self.signal_history = []
@@ -58,7 +60,7 @@ class ContinuousLearner(object):
         return False
 
     def is_solved(self):
-        return np.max(self.hypothesis_probability) > PROBA_DECISION_THRESHOLD
+        return np.max(self.hypothesis_probability) > self.proba_decision_threshold
 
     def get_solution_index(self):
         if self.is_solved():
@@ -85,7 +87,7 @@ class ContinuousLearner(object):
         # we recompute the classifiers, for the uncertainty planning
         hypothesis_classifier_infos = []
         for hyp_label in self.hypothesis_labels:
-            _, hyp_classifier_info = classifier_tools.compute_loglikelihood(self.signal_history, hyp_label, proba_label_valid=PROBA_ASSIGNED_LABEL_VALID, use_leave_one_out=False)
+            _, hyp_classifier_info = classifier_tools.compute_loglikelihood(self.signal_history, hyp_label, proba_label_valid=self.proba_assigned_to_label_valid, use_leave_one_out=False)
             hypothesis_classifier_infos.append(hyp_classifier_info)
         self.hypothesis_classifier_infos = hypothesis_classifier_infos
 
@@ -108,7 +110,7 @@ class ContinuousLearner(object):
             hypothesis_loglikelihoods = []
             hypothesis_classifier_infos = []
             for hyp_label in self.hypothesis_labels:
-                hyp_loglikelihood, hyp_classifier_info = classifier_tools.compute_loglikelihood(self.signal_history, hyp_label, proba_label_valid=PROBA_ASSIGNED_LABEL_VALID, use_leave_one_out=self.use_leave_one_out)
+                hyp_loglikelihood, hyp_classifier_info = classifier_tools.compute_loglikelihood(self.signal_history, hyp_label, proba_label_valid=self.proba_assigned_to_label_valid, use_leave_one_out=self.use_leave_one_out)
 
                 hypothesis_loglikelihoods.append(hyp_loglikelihood)
                 hypothesis_classifier_infos.append(hyp_classifier_info)
@@ -218,7 +220,7 @@ class ContinuousLearner(object):
         pattern_scores = []
         for even_flash_pattern in self.even_flash_patterns:
 
-            log_proba_expected_from_pattern = classifier_tools.label_log_proba(even_flash_pattern, classes, PROBA_ASSIGNED_LABEL_VALID)
+            log_proba_expected_from_pattern = classifier_tools.label_log_proba(even_flash_pattern, classes, self.proba_assigned_to_label_valid)
 
             # for each sample already collected
             sample_uncertainties = []
