@@ -270,7 +270,7 @@ if __name__ == '__main__':
             mean = [1, 1]
         return np.random.multivariate_normal(mean, cov, 1)[0].tolist()
 
-    for i in range(10, 11):
+    for i in range(0, 100):
 
         seed = i
         tools.set_seed(seed)
@@ -278,9 +278,9 @@ if __name__ == '__main__':
         print('{}/{}'.format(i+1, 100))
 
         player = ContinuousPlayer(N_HYPOTHESIS, signal_generator_2D, TARGET)
-        learner = ContinuousLearner(N_HYPOTHESIS)
+        learner = ContinuousLearner(N_HYPOTHESIS, proba_decision_threshold=0.95, proba_assigned_to_label_valid=0.95)
 
-        N_FOUND = 10
+        N_FOUND = 1
 
         run_info = {}
         run_info['steps_to_solved'] = []
