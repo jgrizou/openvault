@@ -1,9 +1,20 @@
+import os
+
+# this get our current location in the file system
+import inspect
+HERE_PATH = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+
+# adding openvault directory to path for script ot work both if called directly or imported
+import sys
+openvault_path = os.path.join(HERE_PATH, '..')
+sys.path.append(openvault_path)
+
 import random
 
 import numpy as np
 
-from . import tools
-from . import classifier_tools
+from openvault import tools
+from openvault import classifier_tools
 
 N_CLASS_REQUIREMENT = 2  # Feedback mode -> True or False
 MIN_SAMPLE_PER_CLASS_REQUIREMENT = 3 # Only compute classifiers when there is enough data for it to be meaningfull. This really depends on the dimensionality of the data, make this a variable in the code if required
@@ -263,14 +274,14 @@ if __name__ == '__main__':
     TARGET = None
 
     def signal_generator_2D(is_target_flashed):
-        cov = [[0.01, 0], [0, 0.01]]
+        cov = [[0.1, 0], [0, 0.1]]
         if is_target_flashed:
             mean = [0, 0]
         else:
             mean = [1, 1]
         return np.random.multivariate_normal(mean, cov, 1)[0].tolist()
 
-    for i in range(0, 100):
+    for i in range(0, 1):
 
         seed = i
         tools.set_seed(seed)
@@ -334,11 +345,18 @@ if __name__ == '__main__':
     # plt.scatter(list(range(len(enough_step))), enough_step)
 
     #
-    plt.draw()
-    plt.pause(1)
+    # plt.draw()
+    # plt.pause(1)
     #
     # #
     # import IPython; IPython.embed()
     #
     # plt.close('all')
     # plt.pause(1)
+
+
+    solution = learner.get_solution_index()
+    clf = learner.hypothesis_classifier_infos[solution]['clf']
+    y_img = classifier_tools.generate_map_from_classifier(clf, bounds=(0, 1))
+
+    classifier_tools.save_map_to_file(y_img, 'classifier_boundaries.png')

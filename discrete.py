@@ -1,10 +1,22 @@
+import os
+
+# this get our current location in the file system
+import inspect
+HERE_PATH = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+
+# adding openvault directory to path for script ot work both if called directly or imported
+import sys
+openvault_path = os.path.join(HERE_PATH, '..')
+sys.path.append(openvault_path)
+
+
 import time
 import random
 import itertools
 
 import numpy as np
 
-from . import tools
+from openvault import tools
 
 RESERVED_UNKNOWN_SYMBOL = 'UNKNOWN'
 INCONSISTENT_SYMBOL = 'INCONSISTENT'
