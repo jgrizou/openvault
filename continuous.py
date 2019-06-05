@@ -281,7 +281,7 @@ if __name__ == '__main__':
             mean = [1, 1]
         return np.random.multivariate_normal(mean, cov, 1)[0].tolist()
 
-    for i in range(0, 1):
+    for i in range(2, 3):
 
         seed = i
         tools.set_seed(seed)
@@ -291,7 +291,7 @@ if __name__ == '__main__':
         player = ContinuousPlayer(N_HYPOTHESIS, signal_generator_2D, TARGET)
         learner = ContinuousLearner(N_HYPOTHESIS, proba_decision_threshold=0.95, proba_assigned_to_label_valid=0.95)
 
-        N_FOUND = 1
+        N_FOUND = 5
 
         run_info = {}
         run_info['steps_to_solved'] = []
@@ -340,23 +340,22 @@ if __name__ == '__main__':
     fig = plt.figure()
     plt.plot(learner.hypothesis_probability_history)
 
-    #
-    # fig = plt.figure()
-    # plt.scatter(list(range(len(enough_step))), enough_step)
 
+    ## code below is used to test the plotting of clasifer map for web display
+    # # adding openvault_web/server directory to path
+    # import sys
+    # openvault_web_path = os.path.join(HERE_PATH, '..', 'openvault_web', 'server')
+    # sys.path.append(openvault_web_path)
+    # import web_tools
     #
-    # plt.draw()
-    # plt.pause(1)
+    # solution = learner.get_solution_index()
+    # clf = learner.hypothesis_classifier_infos[solution]['clf']
+    # y_img = web_tools.generate_map_from_classifier(clf, bounds=(-5, 5))
     #
-    # #
-    # import IPython; IPython.embed()
+    # web_tools.save_map_to_file(y_img, 'classifier_boundaries.png', fig_width_inches=5)
     #
-    # plt.close('all')
-    # plt.pause(1)
-
-
-    solution = learner.get_solution_index()
-    clf = learner.hypothesis_classifier_infos[solution]['clf']
-    y_img = classifier_tools.generate_map_from_classifier(clf, bounds=(0, 1))
-
-    classifier_tools.save_map_to_file(y_img, 'classifier_boundaries.png')
+    # signal_scaled, scaler = web_tools.scale_data_to_view_windows(learner.signal_history)
+    #
+    # map_grid = web_tools.generate_map_from_classifier(clf, scaler=scaler)
+    #
+    # web_tools.save_map_to_file(map_grid, 'classifier_boundaries_scaled.png', fig_width_inches=5)

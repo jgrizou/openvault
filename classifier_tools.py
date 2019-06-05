@@ -2,51 +2,6 @@ import numpy as np
 from sklearn.svm import SVC
 from sklearn.model_selection import LeaveOneOut
 
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-
-
-def generate_map_from_classifier(clf, bounds=(0, 1), resolution=1000j):
-    grid_x, grid_y = np.mgrid[bounds[0]:bounds[1]:resolution, bounds[0]:bounds[1]:resolution]
-    # trick on coordinate for imshow to display as a scatter plot
-    X_flat_grid = np.vstack((grid_y.flatten(), 1 - grid_x.flatten())).T
-
-    pred_y_flat_grid = clf.predict_proba(X_flat_grid)[:, 1]
-    pred_y_grid = pred_y_flat_grid.reshape(grid_x.shape)
-
-    return np.flip(pred_y_grid, 0)
-
-
-def save_map_to_file(map_grid, filename, bounds=(0., 1.)):
-    fig = plt.figure()
-    fig.set_size_inches((1, 1))
-    ax = plt.Axes(fig, [bounds[0], bounds[0], bounds[1], bounds[1]])
-    ax.set_axis_off()
-    fig.add_axes(ax)
-
-    # making color map
-    alpha = 0.85
-    n_steps = 100
-    color_list = []
-    # yellow to white
-    c2 = np.linspace(255/255, 255/255, n_steps)
-    c3 = np.linspace(200/255, 255/255, n_steps)
-    c4 = np.linspace(000/255, 255/255, n_steps)
-    for v2, v3, v4 in zip(c2, c3, c4):
-        color_list.append([v2, v3, v4, alpha])
-    #
-    color_list.pop()
-    # white to gray
-    c1 = np.linspace(255/255, 160/255, n_steps)
-    for v1 in c1:
-        color_list.append([v1, v1, v1, alpha])
-
-    c_class_map = matplotlib.colors.ListedColormap(color_list)
-    plt.imshow(map_grid, cmap=c_class_map, extent=(0, 1, 0, 1))
-    plt.savefig(filename, dpi=100)
-    plt.close(fig)
-
 
 def compute_loglikelihood(X, y, kernel='rbf', proba_label_valid=0.99, use_leave_one_out=True):
 
