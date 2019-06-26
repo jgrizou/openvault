@@ -91,8 +91,10 @@ class DiscreteLearner(object):
                 if symbol not in symbols_belief:
                     symbols_belief[symbol] = label_belief
                 elif label_belief != symbols_belief[symbol]:
-                    raise Exception('Symbol belief inconsistent between known and observed!')
+                    # Symbol belief inconsistent between known and observed!
+                    symbols_belief[symbol] = INCONSISTENT_SYMBOL
             else:
+                # Symbol belief inconsistent between known and observed!
                 symbols_belief[symbol] = INCONSISTENT_SYMBOL
 
         return symbols_belief
@@ -242,10 +244,10 @@ class DiscreteLearner(object):
 
         logs['hypothesis_labels'] = self.hypothesis_labels
 
-        logs['is_inconsistent'] = self.is_inconsistent()
-        logs['is_solved'] = self.is_solved()
+        logs['is_inconsistent'] = bool(self.is_inconsistent())  # bool(for json serialisation)
+        logs['is_solved'] = bool(self.is_solved())
         if self.is_solved():
-            logs['solution_index'] = self.get_solution_index()
+            logs['solution_index'] = int(self.get_solution_index())
 
         symbols_belief_per_hypothesis = []
         for i in range(self.n_hypothesis):

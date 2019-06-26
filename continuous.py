@@ -279,9 +279,9 @@ class ContinuousLearner(object):
 
         logs['hypothesis_labels'] = self.hypothesis_labels
 
-        logs['is_inconsistent'] = self.is_inconsistent()
-        logs['is_solved'] = self.is_solved()
+        logs['is_inconsistent'] = bool(self.is_inconsistent())  # bool(for json serialisation)
+        logs['is_solved'] = bool(self.is_solved())
         if self.is_solved():
-            logs['solution_index'] = self.get_solution_index()
+            logs['solution_index'] = int(self.get_solution_index())
 
         return logs
