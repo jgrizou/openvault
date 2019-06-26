@@ -259,3 +259,29 @@ class ContinuousLearner(object):
         # import IPython; IPython.embed()
 
         return best_flash_patterns
+
+    def get_logs(self):
+
+        logs = {}
+
+        logs['learner_type'] = 'continuous'
+
+        logs['n_hypothesis'] = self.n_hypothesis
+
+        logs['use_leave_one_out'] = self.use_leave_one_out
+        logs['proba_decision_threshold'] = self.proba_decision_threshold
+        logs['proba_assigned_to_label_valid'] = self.proba_assigned_to_label_valid
+
+        logs['hypothesis_probability_history'] = self.hypothesis_probability_history
+
+        logs['flash_history'] = self.flash_history
+        logs['signal_history'] = self.signal_history
+
+        logs['hypothesis_labels'] = self.hypothesis_labels
+
+        logs['is_inconsistent'] = self.is_inconsistent()
+        logs['is_solved'] = self.is_solved()
+        if self.is_solved():
+            logs['solution_index'] = self.get_solution_index()
+
+        return logs

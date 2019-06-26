@@ -225,3 +225,32 @@ class DiscreteLearner(object):
         best_flash_patterns = tools.get_values_at_indexes(self.even_flash_patterns, max_scores_indexes)
 
         return best_flash_patterns
+
+    def get_logs(self):
+
+        logs = {}
+
+        logs['learner_type'] = 'discrete'
+
+        logs['n_hypothesis'] = self.n_hypothesis
+        logs['known_symbols'] = self.known_symbols
+
+        logs['hypothesis_validity_history'] = self.hypothesis_validity_history
+
+        logs['flash_history'] = self.flash_history
+        logs['symbol_history'] = self.symbol_history
+
+        logs['hypothesis_labels'] = self.hypothesis_labels
+
+        logs['is_inconsistent'] = self.is_inconsistent()
+        logs['is_solved'] = self.is_solved()
+        if self.is_solved():
+            logs['solution_index'] = self.get_solution_index()
+
+        symbols_belief_per_hypothesis = []
+        for i in range(self.n_hypothesis):
+            symbol_belief = self.compute_symbols_belief_for_hypothesis(i)
+            symbols_belief_per_hypothesis.append(symbol_belief)
+        logs['symbols_belief_per_hypothesis'] = symbols_belief_per_hypothesis
+
+        return logs
