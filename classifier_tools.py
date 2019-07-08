@@ -1,13 +1,31 @@
+import os
+
+# this get our current location in the file system
+import inspect
+HERE_PATH = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+
+# adding openvault directory to path for script ot work both if called directly or imported
+import sys
+openvault_path = os.path.join(HERE_PATH, '..')
+sys.path.append(openvault_path)
+
+from openvault import tools
+
 import numpy as np
 from sklearn.svm import SVC
 from sklearn.model_selection import LeaveOneOut
 
 
-def compute_loglikelihood(X, y, kernel='rbf', proba_label_valid=0.99, use_leave_one_out=True):
+def compute_loglikelihood(X, y, kernel='rbf', proba_label_valid=0.99, use_leave_one_out=True, seed_value=0):
 
     X = np.atleast_2d(X)
     y = np.array(y)
 
+    if seed_value is not None:
+        # we force the random seed here to ensure a classifier trained on the same data will lead to the same final decision function
+        # not necessary but needed for a nice visiualisation of the underlying process by user on the web interface
+        # set seed_value to none to not reset seed at this point
+        tools.set_seed(seed_value, verbose=False)
     # fit a classifier on the full data anyway as we need one for planning (etc) that this function will return
     clf = SVC(gamma='scale', kernel=kernel, probability=True)
     clf.fit(X, y)
