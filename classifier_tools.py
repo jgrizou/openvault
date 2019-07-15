@@ -14,6 +14,24 @@ from openvault import tools
 import numpy as np
 from sklearn.svm import SVC
 from sklearn.model_selection import LeaveOneOut
+from sklearn.calibration import CalibratedClassifierCV
+
+
+def train_classifier(X, y, kernel):
+
+    clf = SVC(gamma='scale', kernel=kernel, probability=True)
+    clf.fit(X, y)
+
+    calibrator = CalibratedClassifierCV(clf, method='sigmoid', cv='prefit')
+    calibrator.fit(X, y)
+
+    # option with cross validation for calibration
+    # clf = SVC(gamma='scale', kernel=kernel, probability=True)
+    # cv = np.min([get_min_sample_per_class(y), 10])
+    # calibrator = CalibratedClassifierCV(clf, method='sigmoid', cv=cv)
+    # calibrator.fit(X, y)
+
+    return calibrator
 
 
 def compute_loglikelihood(X, y, kernel='rbf', proba_label_valid=0.99, use_leave_one_out=True, seed_value=0):
@@ -27,11 +45,14 @@ def compute_loglikelihood(X, y, kernel='rbf', proba_label_valid=0.99, use_leave_
         # set seed_value to none to not reset seed at this point
         tools.set_seed(seed_value, verbose=False)
     # fit a classifier on the full data anyway as we need one for planning (etc) that this function will return
-    clf = SVC(gamma='scale', kernel=kernel, probability=True)
-    clf.fit(X, y)
+    clf = train_classifier(X, y, kernel)
+
+    # this only works because we use a calibrator in train_classifier
+    # otherwise very annoying problems can happen as the classes_ variable does not always reflects the ordering of column in the proba prediction matrice, see: https://github.com/scikit-learn/scikit-learn/issues/13211#issuecomment-511392497
+    ordered_classes = clf.classes_
 
     # get true log matrice
-    log_y_true = label_log_proba(y, clf.classes_, proba_label_valid)
+    log_y_true = label_log_proba(y, ordered_classes, proba_label_valid)
 
     # compute predicted log matrice
     if use_leave_one_out:
@@ -39,15 +60,15 @@ def compute_loglikelihood(X, y, kernel='rbf', proba_label_valid=0.99, use_leave_
 
         loo = LeaveOneOut()
         for train_index, test_index in loo.split(X):
-            loo_clf = SVC(gamma='scale', kernel=kernel, probability=True)
-            loo_clf.fit(X[train_index], y[train_index])
-            log_y_test_pred = loo_clf.predict_log_proba(X[test_index])
 
+            loo_clf = train_classifier(X[train_index], y[train_index], kernel)
+            log_y_test_pred = np.log(loo_clf.predict_proba(X[test_index]))
             log_y_pred[test_index, :] = log_y_test_pred
 
     else:
-        log_y_pred = clf.predict_log_proba(X)
+        log_y_pred = np.log(clf.predict_proba(X))
 
+    print(clf.predict_proba(X))
 
     # likelihood that the classifier output matches with the labels:
     # prod_i sum_y P(y_true_{i}=y)P(y_pred_{i}=y)
@@ -56,6 +77,7 @@ def compute_loglikelihood(X, y, kernel='rbf', proba_label_valid=0.99, use_leave_
 
     classifier_info = {}
     classifier_info['clf'] = clf
+    classifier_info['ordered_classes'] = ordered_classes
     classifier_info['log_y_true'] = log_y_true
     classifier_info['log_y_pred'] = log_y_pred
 

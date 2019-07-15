@@ -41,14 +41,14 @@ class ContinuousPlayer(object):
 
 class ContinuousLearner(object):
 
-    def __init__(self, n_hypothesis, proba_decision_threshold=0.95,
+    def __init__(self, n_hypothesis, proba_decision_threshold=0.9,
         proba_assigned_to_label_valid=0.99, use_leave_one_out_at_start=True):
 
         self.n_hypothesis = n_hypothesis
 
         self.use_leave_one_out = use_leave_one_out_at_start
         self.proba_decision_threshold = proba_decision_threshold # once on hypothesis has proba above this, we consider the problem solved
-        self.proba_assigned_to_label_valid = proba_assigned_to_label_valid # 1-P(user is making a mistake), need to be high but never reach 1 for computational stability
+        self.proba_assigned_to_label_valid = proba_assigned_to_label_valid # 1-P(user is making a mistake), need to be high but never 1 for computational stability.
 
         self.hypothesis_probability = [0.5 for _ in range(self.n_hypothesis)]  # this is not really a probability distribution, see thesis eq 4.10
         self.hypothesis_classifier_infos = [{} for _ in range(self.n_hypothesis)]
