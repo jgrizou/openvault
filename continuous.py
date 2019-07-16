@@ -42,13 +42,13 @@ class ContinuousPlayer(object):
 class ContinuousLearner(object):
 
     def __init__(self, n_hypothesis, proba_decision_threshold=0.9,
-        proba_assigned_to_label_valid=0.99, use_leave_one_out_at_start=True):
+        proba_assigned_to_label_valid=1, use_leave_one_out_at_start=True):
 
         self.n_hypothesis = n_hypothesis
 
         self.use_leave_one_out = use_leave_one_out_at_start
         self.proba_decision_threshold = proba_decision_threshold # once on hypothesis has proba above this, we consider the problem solved
-        self.proba_assigned_to_label_valid = proba_assigned_to_label_valid # 1-P(user is making a mistake), need to be high but never 1 for computational stability.
+        self.proba_assigned_to_label_valid = proba_assigned_to_label_valid # 1-P(user is making a mistake) in [0, 1]
 
         self.hypothesis_probability = [0.5 for _ in range(self.n_hypothesis)]  # this is not really a probability distribution, see thesis eq 4.10
         self.hypothesis_classifier_infos = [{} for _ in range(self.n_hypothesis)]
@@ -157,11 +157,63 @@ class ContinuousLearner(object):
             return random.choice(self.compute_patterns_for_enough_label())
         elif planning_method == 'even_uncertainty':
             if self.enough_labels_per_hypothesis():
-                return random.choice(self.compute_uncertain_patterns())
+
+                uncertain_patterns = self.compute_uncertain_patterns()
+
+                print(uncertain_patterns)
+                print(len(uncertain_patterns))
+
+                selected_patterns = self.compute_patterns_label_entropy_score(uncertain_patterns)
+
+                print(selected_patterns)
+                print(len(selected_patterns))
+
+                return random.choice(selected_patterns)
             else:
                 return random.choice(self.compute_patterns_for_enough_label())
         else:
             raise Exception('Planning method "{}" not defined'.format(method))
+
+
+    def compute_patterns_label_entropy_score(self, flash_patterns):
+        """
+        We return the flash_patterns that increase the most / decrease the less the entropy on the label for each hypothesis
+
+        This means we try to keep a roughly equal proportion of point belonging to each class
+        """
+        pattern_scores = []
+        for flash_pattern in flash_patterns:
+
+            score = 0
+            for i_hyp in range(self.n_hypothesis):
+                # we need to copy to not temper with the array
+
+                # current entropy of labels
+                current_labels = self.hypothesis_labels[i_hyp].copy()
+                label_entropy_start = classifier_tools.entropy(current_labels)
+
+                # future entropy is the flash pattern is shown
+                future_added_label = flash_pattern[i_hyp]
+                current_labels.append(future_added_label)
+                label_entropy_end = classifier_tools.entropy(current_labels)
+
+                # diff entropy is added to score
+                # our policy is to increase label entropy to have a roughly equal number of labels in each class for each hypothesis
+                label_entropy_diff = label_entropy_end - label_entropy_start
+                score += label_entropy_diff
+
+            pattern_scores.append(score)
+
+        # we have a score for every patterns now
+        # we return an array of the one with best scores
+        max_scores = np.max(pattern_scores)
+        max_scores_indexes = tools.get_indexes_for_value(pattern_scores, max_scores)
+        best_flash_patterns = tools.get_values_at_indexes(flash_patterns, max_scores_indexes)
+
+        print(pattern_scores)
+        print(best_flash_patterns)
+
+        return best_flash_patterns
 
 
     def compute_patterns_for_enough_label(self):
@@ -183,6 +235,8 @@ class ContinuousLearner(object):
             score = 0
             for i_hyp in range(self.n_hypothesis):
                 labels = self.hypothesis_labels[i_hyp]
+
+                # if already ok do nothing (score+=0) else we check what is gained from adding the digit
                 if not classifier_tools.is_y_valid(labels, N_CLASS_REQUIREMENT, MIN_SAMPLE_PER_CLASS_REQUIREMENT):
 
                     future_added_label = even_flash_pattern[i_hyp]
@@ -212,7 +266,8 @@ class ContinuousLearner(object):
         For each potential patterns and for each hypothesis, we sample a few signals from history and predict their labels given the current classifier for a given hypothesis. We then compare this with the expected label from the task, that is the one the user will give for the same given hypothesis and as a response to the displayed pattern, that is the True of False of the patterns. We compute the entropy of these and compare what each hypothesis expects. The more the hypothesis disagree (weighted by their current likelihood), the more we are expected to learn things by showing the pattern, hence the better.
         """
 
-        classes = self.hypothesis_classifier_infos[0]['clf'].classes_
+        # we choose the class order from the first classifier, this is arbitrary
+        master_ordered_classes = self.hypothesis_classifier_infos[0]['ordered_classes']
 
         current_n_samples = len(self.signal_history)
         if current_n_samples <= MAX_N_SAMPLES_TO_COMPUTE_UNCERTAINTY:
@@ -228,7 +283,7 @@ class ContinuousLearner(object):
         pattern_scores = []
         for even_flash_pattern in self.even_flash_patterns:
 
-            log_proba_expected_from_pattern = classifier_tools.label_log_proba(even_flash_pattern, classes, self.proba_assigned_to_label_valid)
+            log_proba_expected_from_pattern = classifier_tools.label_log_proba(even_flash_pattern, master_ordered_classes, self.proba_assigned_to_label_valid)
 
             # for each sample already collected
             sample_uncertainties = []
@@ -238,7 +293,13 @@ class ContinuousLearner(object):
                 log_predictions_from_signal = []
                 for i_hyp in range(self.n_hypothesis):
                     log_pred_from_signal = self.hypothesis_classifier_infos[i_hyp]['log_y_pred'][i_sample]
-                    log_predictions_from_signal.append(log_pred_from_signal)
+
+                    # we reposition the columns wrt master_ordered_classes just in case we run into this issue: https://github.com/scikit-learn/scikit-learn/issues/13211#issuecomment-511392497
+                    # this was fixed by using a calibrator so it should never happen
+                    current_classes = self.hypothesis_classifier_infos[i_hyp]['ordered_classes']
+                    ordered_log_pred_from_signal = classifier_tools.reorder_column_according_to_target_classes_ordering(log_pred_from_signal, current_classes, master_ordered_classes)
+
+                    log_predictions_from_signal.append(ordered_log_pred_from_signal)
 
                 # likelihood that the classifier output matches with the labels:
                 # prod_i sum_y P(y_true_{i}=y)P(y_pred_{i}=y)
@@ -259,6 +320,7 @@ class ContinuousLearner(object):
         # import IPython; IPython.embed()
 
         return best_flash_patterns
+
 
     def get_logs(self):
 

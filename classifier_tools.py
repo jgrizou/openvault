@@ -11,6 +11,7 @@ sys.path.append(openvault_path)
 
 from openvault import tools
 
+import scipy.stats
 import numpy as np
 from sklearn.svm import SVC
 from sklearn.model_selection import LeaveOneOut
@@ -19,9 +20,11 @@ from sklearn.calibration import CalibratedClassifierCV
 
 def train_classifier(X, y, kernel):
 
-    clf = SVC(gamma='scale', kernel=kernel, probability=True)
+    clf = SVC(gamma='scale', kernel=kernel, probability=False)
     clf.fit(X, y)
 
+    # we need to use a calibrator to get consistent probability matrix output
+    # see https://github.com/scikit-learn/scikit-learn/issues/13211#issuecomment-511392497
     calibrator = CalibratedClassifierCV(clf, method='sigmoid', cv='prefit')
     calibrator.fit(X, y)
 
@@ -47,7 +50,7 @@ def compute_loglikelihood(X, y, kernel='rbf', proba_label_valid=0.99, use_leave_
     # fit a classifier on the full data anyway as we need one for planning (etc) that this function will return
     clf = train_classifier(X, y, kernel)
 
-    # this only works because we use a calibrator in train_classifier
+    # this is valid only because we use a calibrator in train_classifier
     # otherwise very annoying problems can happen as the classes_ variable does not always reflects the ordering of column in the proba prediction matrice, see: https://github.com/scikit-learn/scikit-learn/issues/13211#issuecomment-511392497
     ordered_classes = clf.classes_
 
@@ -67,8 +70,6 @@ def compute_loglikelihood(X, y, kernel='rbf', proba_label_valid=0.99, use_leave_
 
     else:
         log_y_pred = np.log(clf.predict_proba(X))
-
-    print(clf.predict_proba(X))
 
     # likelihood that the classifier output matches with the labels:
     # prod_i sum_y P(y_true_{i}=y)P(y_pred_{i}=y)
@@ -97,14 +98,35 @@ def label_log_proba(y, classes, proba_label_valid):
             else:
                 proba = (1 - proba_label_valid) / (N_CLASSES - 1)
             proba_label.append(proba)
+
+        # make it log, and disable warning for divide by zero that happen when we do np.log(0)
+        np.seterr(divide = 'ignore')
         logproba_label.append(np.log(proba_label))
+        np.seterr(divide = 'warn')
 
     return np.array(logproba_label)
 
-# The method is based on the notion that
-# ln(a + b) = ln{exp[ln(a) - ln(b)] + 1} + ln(b).
+
 def add_lns(a_ln, b_ln):
+    # return P(a)+P(b) but directly from ln(a) and ln(b).
+
+    # if both a_ln and b_ln are equal to -inf, then we return -inf
+    if np.equal(a_ln, -np.inf) and np.equal(b_ln, -np.inf):
+        return -np.inf
+
+    # if a_ln is -inf, it mean P(a)=0, so we return b_ln
+    if np.equal(a_ln, -np.inf):
+        return b_ln
+
+    # if b_ln is -inf, it mean P(b)=0, so we return a_ln
+    if np.equal(b_ln, -np.inf):
+        return a_ln
+
+    # Else we do the proper calculation
+    # The method is based on the notion that
+    # ln(a + b) = ln{exp[ln(a) - ln(b)] + 1} + ln(b).
     return np.log(np.exp(a_ln - b_ln) + 1) + b_ln
+
 
 def sum_log_array(log_array):
     log_array = np.atleast_2d(log_array)
@@ -117,8 +139,9 @@ def sum_log_array(log_array):
             for j in range(n_columns - 2):
                 logSum = add_lns(logSum, log_array[i, j + 2])
         else:
-            logSum = log_array[i, 1]
+            logSum = log_array[i, 0]
         out[i] = logSum
+
     return out
 
 def normalize_log_array(log_array):
@@ -156,3 +179,16 @@ def weighted_variance(values, weights):
     weighted_average = np.average(values, weights=weights)
     weighted_variance = np.average((values-weighted_average)**2, weights=weights)
     return weighted_variance
+
+
+def reorder_column_according_to_target_classes_ordering(X, current_classes, target_classes):
+
+    if np.all(current_classes == target_classes):
+        return X
+    else:
+        raise Execption('Not implemented, should never happen at this stage if a CalibratedClassifierCV is used')
+
+
+def entropy(labels, base=2):
+  value,counts = np.unique(labels, return_counts=True)
+  return scipy.stats.entropy(counts, base=base)
