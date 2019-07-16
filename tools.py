@@ -70,8 +70,4 @@ def select_high_entropy_patterns(n_hypothesis, hypothesis_labels, flash_patterns
     max_scores_indexes = get_indexes_for_value(pattern_scores, max_scores)
     best_flash_patterns = get_values_at_indexes(flash_patterns, max_scores_indexes)
 
-    print(pattern_scores)
-    print(max_scores)
-    print(best_flash_patterns)
-
     return best_flash_patterns
