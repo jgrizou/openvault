@@ -160,7 +160,14 @@ class DiscreteLearner(object):
         elif planning_method == 'even_random':
             return random.choice(self.even_flash_patterns)
         elif planning_method == 'even_uncertainty':
-            return random.choice(self.compute_uncertain_patterns())
+            # get most uncertain patterns
+            uncertain_patterns = self.compute_uncertain_patterns()
+
+            # select the one the diversify the labels the most across all hypothesis
+            selected_patterns = tools.select_high_entropy_patterns(self.n_hypothesis, self.hypothesis_labels, uncertain_patterns)
+
+            # randomly pick from the remaining best flashing patterns
+            return random.choice(selected_patterns)
         else:
             raise Exception('Planning method "{}" not defined'.format(method))
 
@@ -227,6 +234,7 @@ class DiscreteLearner(object):
         best_flash_patterns = tools.get_values_at_indexes(self.even_flash_patterns, max_scores_indexes)
 
         return best_flash_patterns
+
 
     def get_logs(self):
 

@@ -156,64 +156,22 @@ class ContinuousLearner(object):
         elif planning_method == 'even_enough_label':
             return random.choice(self.compute_patterns_for_enough_label())
         elif planning_method == 'even_uncertainty':
+            # if not enough labesl, the classifiers are not trained so we cannot compute any uncertainty
             if self.enough_labels_per_hypothesis():
 
+                # get most uncertain patterns
                 uncertain_patterns = self.compute_uncertain_patterns()
 
-                print(uncertain_patterns)
-                print(len(uncertain_patterns))
+                # select the one the diversify the labels the most across all hypothesis
+                selected_patterns = tools.select_high_entropy_patterns(self.n_hypothesis, self.hypothesis_labels, uncertain_patterns)
 
-                selected_patterns = self.compute_patterns_label_entropy_score(uncertain_patterns)
-
-                print(selected_patterns)
-                print(len(selected_patterns))
-
+                # randomly pick from the remaining best flashing patterns
                 return random.choice(selected_patterns)
             else:
+                # we thus select the flashing patterns that will help get enough labels per class for each hypothesis
                 return random.choice(self.compute_patterns_for_enough_label())
         else:
             raise Exception('Planning method "{}" not defined'.format(method))
-
-
-    def compute_patterns_label_entropy_score(self, flash_patterns):
-        """
-        We return the flash_patterns that increase the most / decrease the less the entropy on the label for each hypothesis
-
-        This means we try to keep a roughly equal proportion of point belonging to each class
-        """
-        pattern_scores = []
-        for flash_pattern in flash_patterns:
-
-            score = 0
-            for i_hyp in range(self.n_hypothesis):
-                # we need to copy to not temper with the array
-
-                # current entropy of labels
-                current_labels = self.hypothesis_labels[i_hyp].copy()
-                label_entropy_start = classifier_tools.entropy(current_labels)
-
-                # future entropy is the flash pattern is shown
-                future_added_label = flash_pattern[i_hyp]
-                current_labels.append(future_added_label)
-                label_entropy_end = classifier_tools.entropy(current_labels)
-
-                # diff entropy is added to score
-                # our policy is to increase label entropy to have a roughly equal number of labels in each class for each hypothesis
-                label_entropy_diff = label_entropy_end - label_entropy_start
-                score += label_entropy_diff
-
-            pattern_scores.append(score)
-
-        # we have a score for every patterns now
-        # we return an array of the one with best scores
-        max_scores = np.max(pattern_scores)
-        max_scores_indexes = tools.get_indexes_for_value(pattern_scores, max_scores)
-        best_flash_patterns = tools.get_values_at_indexes(flash_patterns, max_scores_indexes)
-
-        print(pattern_scores)
-        print(best_flash_patterns)
-
-        return best_flash_patterns
 
 
     def compute_patterns_for_enough_label(self):

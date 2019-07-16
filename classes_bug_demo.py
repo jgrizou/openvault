@@ -31,13 +31,16 @@ print('Classes: {}'.format(clf0.classes_))
 print('Predited probabilitic labeling:')
 print(clf0.predict_proba(X))
 
+
+## here the classes ordering matches with the probabilistic prediction
+
+# ####
 # Classifer 0 summary:
-# True     labels: [False False False  True  True  True]
-# Predited labels: [False False False  True  True  True]
+# True     labels: [0 0 0 1 1 1]
+# Predited labels: [0 0 0 1 1 1]
 # Classification accuracy: 1.0
 # --
-# ## here the classes ordering matches with the probabilistic prediction
-# Classes: [False  True]
+# Classes: [0 1]
 # Predited probabilitic labeling:
 # [[0.98456235 0.01543765]
 #  [0.98680646 0.01319354]
@@ -45,7 +48,6 @@ print(clf0.predict_proba(X))
 #  [0.0141697  0.9858303 ]
 #  [0.01153142 0.98846858]
 #  [0.02285266 0.97714734]]
-
 
 
 # train a classifier for y1
@@ -63,13 +65,15 @@ print('Classes: {}'.format(clf1.classes_))
 print('Predited probabilitic labeling:')
 print(clf1.predict_proba(X))
 
+## here the classes ordering does not match with the probabilistic prediction
+
+# ####
 # Classifer 1 summary:
-# True     labels: [False False  True False  True  True]
-# Predited labels: [False False  True False  True  True]
+# True     labels: [0 0 1 0 1 1]
+# Predited labels: [0 0 1 0 1 1]
 # Classification accuracy: 1.0
 # --
-## here the classes ordering does not match with the probabilistic prediction
-# Classes: [False  True]
+# Classes: [0 1]
 # Predited probabilitic labeling:
 # [[0.0774986  0.9225014 ]
 #  [0.21423451 0.78576549]
@@ -109,16 +113,16 @@ print('classes_ from SVC:                {}'.format(clf0.classes_))
 print('classes as used in predict_proba: {}'.format(get_ordered_classes(clf0, X, y0)))
 
 # #### classes for y0
-# classes_ from SVC:                [False  True]
-# classes as used in predict_proba: [False  True]
+# classes_ from SVC:                [0 1]
+# classes as used in predict_proba: [0 1]
 
 print('#### classes for y1')
 print('classes_ from SVC:             {}'.format(clf1.classes_))
 print('classes used in predict_proba: {}'.format(get_ordered_classes(clf1, X, y1)))
 
 # #### classes for y1
-# classes_ from SVC:             [False  True]
-# classes used in predict_proba: [ True False]
+# classes_ from SVC:             [0 1]
+# classes used in predict_proba: [1 0]
 
 
 ## Solution using CalibratedClassifierCV

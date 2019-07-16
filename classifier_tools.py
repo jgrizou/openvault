@@ -11,7 +11,6 @@ sys.path.append(openvault_path)
 
 from openvault import tools
 
-import scipy.stats
 import numpy as np
 from sklearn.svm import SVC
 from sklearn.model_selection import LeaveOneOut
@@ -29,6 +28,7 @@ def train_classifier(X, y, kernel):
     calibrator.fit(X, y)
 
     # option with cross validation for calibration
+    # the resulting maps are not that nice for the user to see on the interface of openvault_web, so decided not to use it
     # clf = SVC(gamma='scale', kernel=kernel, probability=True)
     # cv = np.min([get_min_sample_per_class(y), 10])
     # calibrator = CalibratedClassifierCV(clf, method='sigmoid', cv=cv)
@@ -187,8 +187,3 @@ def reorder_column_according_to_target_classes_ordering(X, current_classes, targ
         return X
     else:
         raise Execption('Not implemented, should never happen at this stage if a CalibratedClassifierCV is used')
-
-
-def entropy(labels, base=2):
-  value,counts = np.unique(labels, return_counts=True)
-  return scipy.stats.entropy(counts, base=base)
