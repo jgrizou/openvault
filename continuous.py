@@ -156,11 +156,19 @@ class ContinuousLearner(object):
         elif planning_method == 'even_enough_label':
             return random.choice(self.compute_patterns_for_enough_label())
         elif planning_method == 'even_uncertainty':
+
+            # make sure the last flash pattern is not used
+            # this is only for UI needs so the user can see a different pattern each time to know we have moved from one step and they should send a new feedback signal
+            flash_patterns = self.even_flash_patterns
+            if len(self.flash_history) > 0:
+                last_flash_pattern_shown = self.flash_history[-1]
+                flash_patterns = tools.remove_patterns_from_list(flash_patterns, [last_flash_pattern_shown])
+
             # if not enough labesl, the classifiers are not trained so we cannot compute any uncertainty
             if self.enough_labels_per_hypothesis():
 
                 # get most uncertain patterns
-                uncertain_patterns = self.compute_uncertain_patterns()
+                uncertain_patterns = self.compute_uncertain_patterns(flash_patterns)
 
                 # select the one the diversify the labels the most across all hypothesis
                 selected_patterns = tools.select_high_entropy_patterns(self.n_hypothesis, self.hypothesis_labels, uncertain_patterns)
@@ -169,12 +177,13 @@ class ContinuousLearner(object):
                 return random.choice(selected_patterns)
             else:
                 # we thus select the flashing patterns that will help get enough labels per class for each hypothesis
-                return random.choice(self.compute_patterns_for_enough_label())
+                return random.choice(self.compute_patterns_for_enough_label(flash_patterns))
+
         else:
             raise Exception('Planning method "{}" not defined'.format(method))
 
 
-    def compute_patterns_for_enough_label(self):
+    def compute_patterns_for_enough_label(self, flash_patterns):
         """
         We try to see if each pattern helps getting closer to having enough labelled data in all our hypothesis labels to be able to start updating probabilities.
 
@@ -188,7 +197,7 @@ class ContinuousLearner(object):
         """
 
         pattern_scores = []
-        for even_flash_pattern in self.even_flash_patterns:
+        for even_flash_pattern in flash_patterns:
 
             score = 0
             for i_hyp in range(self.n_hypothesis):
@@ -212,12 +221,12 @@ class ContinuousLearner(object):
         # we return an array of the one with best scores
         max_scores = np.max(pattern_scores)
         max_scores_indexes = tools.get_indexes_for_value(pattern_scores, max_scores)
-        best_flash_patterns = tools.get_values_at_indexes(self.even_flash_patterns, max_scores_indexes)
+        best_flash_patterns = tools.get_values_at_indexes(flash_patterns, max_scores_indexes)
 
         return best_flash_patterns
 
 
-    def compute_uncertain_patterns(self):
+    def compute_uncertain_patterns(self, flash_patterns):
         """
         We use the prediction method as explained in my thesis.
 
@@ -239,7 +248,7 @@ class ContinuousLearner(object):
 
 
         pattern_scores = []
-        for even_flash_pattern in self.even_flash_patterns:
+        for even_flash_pattern in flash_patterns:
 
             log_proba_expected_from_pattern = classifier_tools.label_log_proba(even_flash_pattern, master_ordered_classes, self.proba_assigned_to_label_valid)
 
@@ -273,7 +282,7 @@ class ContinuousLearner(object):
         # we return an array of the most uncertain one
         max_scores = np.max(pattern_scores)
         max_scores_indexes = tools.get_indexes_for_value(pattern_scores, max_scores)
-        best_flash_patterns = tools.get_values_at_indexes(self.even_flash_patterns, max_scores_indexes)
+        best_flash_patterns = tools.get_values_at_indexes(flash_patterns, max_scores_indexes)
 
         # import IPython; IPython.embed()
 

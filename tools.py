@@ -71,3 +71,12 @@ def select_high_entropy_patterns(n_hypothesis, hypothesis_labels, flash_patterns
     best_flash_patterns = get_values_at_indexes(flash_patterns, max_scores_indexes)
 
     return best_flash_patterns
+
+
+def remove_patterns_from_list(original_flash_patterns_list, flash_patterns_to_remove):
+    # copy list to avoid any out of scope modification
+    updated_flash_patterns_list = original_flash_patterns_list.copy()
+    for flash_pattern in flash_patterns_to_remove:
+        updated_flash_patterns_list.remove(flash_pattern)
+
+    return updated_flash_patterns_list

@@ -160,8 +160,16 @@ class DiscreteLearner(object):
         elif planning_method == 'even_random':
             return random.choice(self.even_flash_patterns)
         elif planning_method == 'even_uncertainty':
+
+            # make sure the last flash pattern is not used
+            # this is only for UI needs so the user can see a different pattern each time to know we have moved from one step and they should send a new feedback signal
+            flash_patterns = self.even_flash_patterns
+            if len(self.flash_history) > 0:
+                last_flash_pattern_shown = self.flash_history[-1]
+                flash_patterns = tools.remove_patterns_from_list(flash_patterns, [last_flash_pattern_shown])
+
             # get most uncertain patterns
-            uncertain_patterns = self.compute_uncertain_patterns()
+            uncertain_patterns = self.compute_uncertain_patterns(flash_patterns)
 
             # select the one the diversify the labels the most across all hypothesis
             selected_patterns = tools.select_high_entropy_patterns(self.n_hypothesis, self.hypothesis_labels, uncertain_patterns)
@@ -172,14 +180,14 @@ class DiscreteLearner(object):
             raise Exception('Planning method "{}" not defined'.format(method))
 
 
-    def compute_uncertain_patterns(self):
+    def compute_uncertain_patterns(self, flash_patterns):
 
         symbol_set = set(self.symbol_history)
         symbol_set.add(RESERVED_UNKNOWN_SYMBOL) # we add an unknown symbol here for those cases when we have not seen any symbol for label yet
 
         # we will compute an uncertainty score for each pattern
         pattern_scores = []
-        for even_flash_pattern in self.even_flash_patterns:
+        for even_flash_pattern in flash_patterns:
             # we only compute uncertainty between hypothesis still valid
             hypothesis_indexes_to_differentiate = tools.get_indexes_for_value(self.hypothesis_validity, True)
 
@@ -231,7 +239,7 @@ class DiscreteLearner(object):
         # we return an array of the most uncertain one
         max_scores = np.max(pattern_scores)
         max_scores_indexes = tools.get_indexes_for_value(pattern_scores, max_scores)
-        best_flash_patterns = tools.get_values_at_indexes(self.even_flash_patterns, max_scores_indexes)
+        best_flash_patterns = tools.get_values_at_indexes(flash_patterns, max_scores_indexes)
 
         return best_flash_patterns
 
