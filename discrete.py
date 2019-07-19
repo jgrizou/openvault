@@ -160,6 +160,8 @@ class DiscreteLearner(object):
         elif planning_method == 'even_random':
             return random.choice(self.even_flash_patterns)
         elif planning_method == 'even_uncertainty':
+            return random.choice(self.compute_uncertain_patterns(self.even_flash_patterns))
+        elif planning_method == 'web_ui':
 
             # make sure the last flash pattern is not used
             # this is only for UI needs so the user can see a different pattern each time to know we have moved from one step and they should send a new feedback signal
@@ -173,6 +175,10 @@ class DiscreteLearner(object):
 
             # select the one the diversify the labels the most across all hypothesis
             selected_patterns = tools.select_high_entropy_patterns(self.n_hypothesis, self.hypothesis_labels, uncertain_patterns)
+
+            print(len(flash_patterns))
+            print(len(uncertain_patterns))
+            print(len(selected_patterns))
 
             # randomly pick from the remaining best flashing patterns
             return random.choice(selected_patterns)

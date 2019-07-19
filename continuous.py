@@ -156,6 +156,15 @@ class ContinuousLearner(object):
         elif planning_method == 'even_enough_label':
             return random.choice(self.compute_patterns_for_enough_label())
         elif planning_method == 'even_uncertainty':
+            # if not enough labesl, the classifiers are not trained so we cannot compute any uncertainty
+            if self.enough_labels_per_hypothesis():
+                return random.choice(self.compute_uncertain_patterns(self.even_flash_patterns))
+            else:
+                # we thus select the flashing patterns that will help get enough labels per class for each hypothesis
+                return random.choice(self.compute_patterns_for_enough_label(self.even_flash_patterns))
+
+        elif planning_method == 'web_ui':
+            # additonal tweaks for making the user experience better
 
             # make sure the last flash pattern is not used
             # this is only for UI needs so the user can see a different pattern each time to know we have moved from one step and they should send a new feedback signal
@@ -170,7 +179,7 @@ class ContinuousLearner(object):
                 # get most uncertain patterns
                 uncertain_patterns = self.compute_uncertain_patterns(flash_patterns)
 
-                # select the one the diversify the labels the most across all hypothesis
+                # select the patterns for which the diversify in the labels increase the most across all hypothesis
                 selected_patterns = tools.select_high_entropy_patterns(self.n_hypothesis, self.hypothesis_labels, uncertain_patterns)
 
                 # randomly pick from the remaining best flashing patterns
