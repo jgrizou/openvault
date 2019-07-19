@@ -176,10 +176,6 @@ class DiscreteLearner(object):
             # select the one the diversify the labels the most across all hypothesis
             selected_patterns = tools.select_high_entropy_patterns(self.n_hypothesis, self.hypothesis_labels, uncertain_patterns)
 
-            print(len(flash_patterns))
-            print(len(uncertain_patterns))
-            print(len(selected_patterns))
-
             # randomly pick from the remaining best flashing patterns
             return random.choice(selected_patterns)
         else:
